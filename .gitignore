@@ -1,0 +1,9 @@
+node_modules
+.env
+dist
+.DS_Store
+uploads
+*.db
+*.sqlite
+npm-debug.log
+.agents
