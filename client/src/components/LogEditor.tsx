@@ -4,13 +4,15 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { Save, Upload, Eye, Edit3, ArrowLeft } from 'lucide-react';
+import { Save, Upload, Eye, Edit3, ArrowLeft, X } from 'lucide-react';
 
 export default function LogEditor() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
   const [isPreview, setIsPreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -22,6 +24,9 @@ export default function LogEditor() {
         .then((data) => {
           setTitle(data.title);
           setContent(data.content);
+          if (data.tags) {
+            setTags(data.tags.map((t: any) => t.name));
+          }
         })
         .catch((err) => console.error(err));
     }
@@ -37,7 +42,7 @@ export default function LogEditor() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, content }),
+        body: JSON.stringify({ title, content, tags }),
       });
       if (res.ok) {
         navigate(id ? `/logs/${id}` : '/');
@@ -75,6 +80,21 @@ export default function LogEditor() {
     }
   };
 
+  const handleTagKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const newTag = tagInput.trim();
+      if (newTag && !tags.includes(newTag) && tags.length < 3) {
+        setTags([...tags, newTag]);
+        setTagInput('');
+      }
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-8">
@@ -104,6 +124,37 @@ export default function LogEditor() {
             className="block w-full px-4 py-3 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-lg font-medium placeholder-gray-400"
             required
           />
+        </div>
+
+        <div className="space-y-2">
+          <label className="block text-sm font-semibold text-gray-700">
+            Tags (Max 3)
+          </label>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {tags.map(tag => (
+              <span key={tag} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                {tag}
+                <button
+                  type="button"
+                  onClick={() => removeTag(tag)}
+                  className="ml-1.5 text-blue-400 hover:text-blue-600 focus:outline-none"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+          {tags.length < 3 && (
+            <input
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={handleTagKeyDown}
+              placeholder="Type tag and press Enter..."
+              className="block w-full px-4 py-2.5 rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
+            />
+          )}
+          <p className="text-xs text-gray-500">Press Enter or comma to add a tag.</p>
         </div>
 
         <div className="space-y-2">

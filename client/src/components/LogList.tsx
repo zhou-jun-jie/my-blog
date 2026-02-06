@@ -1,22 +1,28 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Trash2, Calendar, ChevronRight, X } from 'lucide-react';
+import { Search, Trash2, Calendar, ChevronRight, X, Tag as TagIcon } from 'lucide-react';
 
 interface Log {
   id: number;
   title: string;
   createdAt: string;
+  tags?: { id: number; name: string }[];
 }
 
 export default function LogList() {
   const [logs, setLogs] = useState<Log[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchLogs = (query = '') => {
+  const fetchLogs = (query = '', tag = '') => {
     setLoading(true);
-    const url = query ? `/api/logs?search=${encodeURIComponent(query)}` : '/api/logs';
+    const params = new URLSearchParams();
+    if (query) params.append('search', query);
+    if (tag) params.append('tag', tag);
+    const url = `/api/logs?${params.toString()}`;
+
     fetch(url)
       .then((res) => res.json())
       .then((data) => {
@@ -30,12 +36,18 @@ export default function LogList() {
   };
 
   useEffect(() => {
-    fetchLogs();
-  }, []);
+    fetchLogs(searchTerm, selectedTag || '');
+  }, [selectedTag]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchLogs(searchTerm);
+    fetchLogs(searchTerm, selectedTag || '');
+  };
+
+  const handleTagClick = (e: React.MouseEvent, tag: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedTag(tag);
   };
 
   const confirmDelete = async () => {
@@ -43,7 +55,7 @@ export default function LogList() {
     try {
       const res = await fetch(`/api/logs/${deleteId}`, { method: 'DELETE' });
       if (res.ok) {
-        fetchLogs(searchTerm);
+        fetchLogs(searchTerm, selectedTag || '');
         setDeleteId(null);
       } else {
         alert('Failed to delete log');
@@ -109,7 +121,7 @@ export default function LogList() {
               type="button"
               onClick={() => {
                 setSearchTerm('');
-                fetchLogs('');
+                fetchLogs('', selectedTag || '');
               }}
               className="absolute inset-y-0 right-0 pr-3 flex items-center"
             >
@@ -117,6 +129,21 @@ export default function LogList() {
             </button>
           )}
         </form>
+
+        {selectedTag && (
+          <div className="flex items-center animate-in fade-in duration-200">
+            <span className="text-sm text-gray-500 mr-2">Filtered by tag:</span>
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+              {selectedTag}
+              <button
+                onClick={() => setSelectedTag(null)}
+                className="ml-2 hover:text-blue-900 focus:outline-none"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Log List */}
@@ -137,12 +164,27 @@ export default function LogList() {
                 <h2 className="text-lg font-semibold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
                   {log.title}
                 </h2>
-                <div className="flex items-center text-sm text-gray-500 mt-1 space-x-4">
-                  <span className="flex items-center">
+                <div className="flex flex-wrap items-center gap-y-2 text-sm text-gray-500 mt-1">
+                  <span className="flex items-center mr-4">
                     <Calendar className="w-3.5 h-3.5 mr-1.5" />
                     {new Date(log.createdAt).toLocaleDateString()}
                   </span>
-                  <span className="text-gray-300">|</span>
+                  
+                  {log.tags && log.tags.length > 0 && (
+                    <div className="flex items-center gap-2 mr-4">
+                      {log.tags.map(tag => (
+                        <span 
+                          key={tag.id} 
+                          onClick={(e) => handleTagClick(e, tag.name)}
+                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer"
+                        >
+                          <TagIcon className="w-3 h-3 mr-1" />
+                          {tag.name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
                   <span className="flex items-center text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity text-xs font-medium">
                     Read more <ChevronRight className="w-3 h-3 ml-0.5" />
                   </span>

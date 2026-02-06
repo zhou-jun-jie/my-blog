@@ -46,26 +46,33 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 
 // Get all logs
 app.get('/api/logs', async (req, res) => {
-  const { search } = req.query;
+  const { search, tag } = req.query;
   try {
-    let where = {};
+    let where: any = {};
     if (search) {
       const terms = String(search).trim().split(/\s+/);
       if (terms.length > 0) {
-        where = {
-          AND: terms.map(term => ({
-            OR: [
-              { title: { contains: term } },
-              { content: { contains: term } }
-            ]
-          }))
-        };
+        where.AND = terms.map((term: string) => ({
+          OR: [
+            { title: { contains: term } },
+            { content: { contains: term } }
+          ]
+        }));
       }
+    }
+
+    if (tag) {
+      where.tags = {
+        some: {
+          name: String(tag)
+        }
+      };
     }
 
     const logs = await prisma.log.findMany({
       where,
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      include: { tags: true }
     });
     res.json(logs);
   } catch (error) {
@@ -78,7 +85,13 @@ app.get('/api/logs/:id', async (req, res) => {
   const { id } = req.params;
   try {
     const log = await prisma.log.findUnique({
-      where: { id: Number(id) }
+      where: { id: Number(id) },
+      include: { 
+        tags: true,
+        history: {
+          orderBy: { updatedAt: 'desc' }
+        }
+      }
     });
     if (log) {
       res.json(log);
@@ -96,9 +109,14 @@ app.get('/', (req, res) => {
 });
 
 app.post('/api/logs', async (req, res) => {
-  const { title, content } = req.body;
+  const { title, content, tags } = req.body;
   if (!title || !content) {
     res.status(400).json({ error: 'Title and content are required' });
+    return;
+  }
+  
+  if (tags && (!Array.isArray(tags) || tags.length > 3)) {
+    res.status(400).json({ error: 'Tags must be an array of max 3 strings' });
     return;
   }
 
@@ -107,7 +125,14 @@ app.post('/api/logs', async (req, res) => {
       data: {
         title,
         content,
+        tags: tags ? {
+          connectOrCreate: tags.map((tag: string) => ({
+            where: { name: tag },
+            create: { name: tag }
+          }))
+        } : undefined
       },
+      include: { tags: true }
     });
     res.status(201).json(newLog);
   } catch (error) {
@@ -118,14 +143,53 @@ app.post('/api/logs', async (req, res) => {
 // Update log
 app.put('/api/logs/:id', async (req, res) => {
   const { id } = req.params;
-  const { title, content } = req.body;
+  const { title, content, tags } = req.body;
+  
+  if (tags && (!Array.isArray(tags) || tags.length > 3)) {
+    res.status(400).json({ error: 'Tags must be an array of max 3 strings' });
+    return;
+  }
+
   try {
+    const existingLog = await prisma.log.findUnique({ where: { id: Number(id) } });
+    if (!existingLog) {
+      res.status(404).json({ error: 'Log not found' });
+      return;
+    }
+
+    // Create history record with OLD content
+    await prisma.logHistory.create({
+      data: {
+        logId: Number(id),
+        content: existingLog.content
+      }
+    });
+
+    // Upsert tags to ensure they exist for 'set'
+    if (tags) {
+      for (const tag of tags) {
+        await prisma.tag.upsert({
+          where: { name: tag },
+          update: {},
+          create: { name: tag }
+        });
+      }
+    }
+
     const updatedLog = await prisma.log.update({
       where: { id: Number(id) },
-      data: { title, content },
+      data: { 
+        title, 
+        content,
+        tags: tags ? {
+          set: tags.map((t: string) => ({ name: t }))
+        } : undefined
+      },
+      include: { tags: true }
     });
     res.json(updatedLog);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: 'Failed to update log' });
   }
 });
