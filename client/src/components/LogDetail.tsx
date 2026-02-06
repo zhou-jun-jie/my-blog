@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { ArrowLeft, Edit2, Calendar } from 'lucide-react';
 
 interface Log {
   id: number;
@@ -23,35 +24,55 @@ export default function LogDetail() {
       .catch((err) => console.error(err));
   }, [id]);
 
-  if (!log) return <div className="p-4 text-center">Loading...</div>;
+  if (!log) return (
+    <div className="flex justify-center items-center h-64 text-gray-400">
+      Loading...
+    </div>
+  );
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="mb-6">
-        <Link to="/" className="text-blue-500 hover:underline">
-          &larr; Back to List
+    <article className="max-w-3xl mx-auto">
+      <div className="mb-8">
+        <Link 
+          to="/" 
+          className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-blue-600 transition-colors mb-6"
+        >
+          <ArrowLeft className="w-4 h-4 mr-1" />
+          Back to List
         </Link>
+        
+        <header className="border-b border-gray-100 pb-8">
+          <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 mb-4 leading-tight">
+            {log.title}
+          </h1>
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center text-gray-500">
+              <Calendar className="w-4 h-4 mr-2" />
+              {new Date(log.createdAt).toLocaleDateString(undefined, { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+            </div>
+            <Link
+              to={`/logs/${log.id}/edit`}
+              className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium transition-colors"
+            >
+              <Edit2 className="w-4 h-4 mr-1.5" />
+              Edit Log
+            </Link>
+          </div>
+        </header>
       </div>
-      <div className="bg-white p-6 rounded shadow-md">
-        <div className="flex justify-between items-start mb-4">
-          <h1 className="text-3xl font-bold">{log.title}</h1>
-          <Link
-            to={`/logs/${log.id}/edit`}
-            className="text-gray-500 hover:text-blue-500"
-          >
-            Edit
-          </Link>
-        </div>
-        <div className="text-gray-500 text-sm mb-6 border-b pb-4">
-          {new Date(log.createdAt).toLocaleString()}
-        </div>
-        <div className="prose max-w-none">
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              code({ node, inline, className, children, ...props }: any) {
-                const match = /language-(\w+)/.exec(className || '');
-                return !inline && match ? (
+
+      <div className="prose prose-slate prose-lg max-w-none">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            code({ node, inline, className, children, ...props }: any) {
+              const match = /language-(\w+)/.exec(className || '');
+              return !inline && match ? (
+                <div className="rounded-lg overflow-hidden my-6 shadow-md">
                   <SyntaxHighlighter
                     style={vscDarkPlus}
                     language={match[1]}
@@ -60,18 +81,33 @@ export default function LogDetail() {
                   >
                     {String(children).replace(/\n$/, '')}
                   </SyntaxHighlighter>
-                ) : (
-                  <code className={className} {...props}>
-                    {children}
-                  </code>
-                );
-              },
-            }}
-          >
-            {log.content}
-          </ReactMarkdown>
-        </div>
+                </div>
+              ) : (
+                <code className={`${className} bg-gray-100 text-pink-600 px-1.5 py-0.5 rounded text-sm font-mono`} {...props}>
+                  {children}
+                </code>
+              );
+            },
+            img({ src, alt }) {
+              return (
+                <div className="my-8">
+                  <img src={src} alt={alt} className="rounded-xl shadow-lg mx-auto border border-gray-100" />
+                  {alt && <p className="text-center text-sm text-gray-500 mt-2">{alt}</p>}
+                </div>
+              );
+            },
+            blockquote({ children }) {
+              return (
+                <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-700 bg-gray-50 py-2 pr-2 rounded-r">
+                  {children}
+                </blockquote>
+              );
+            }
+          }}
+        >
+          {log.content}
+        </ReactMarkdown>
       </div>
-    </div>
+    </article>
   );
 }

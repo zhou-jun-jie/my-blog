@@ -1,3 +1,29 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-slate-900 antialiased;
+  }
+}
+
+.prose {
+  @apply text-slate-700;
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  @apply text-slate-900 font-semibold tracking-tight;
+}
+
+.prose a {
+  @apply text-blue-600 no-underline hover:text-blue-800 transition-colors;
+}
+
+.prose code {
+  @apply bg-gray-100 text-pink-600 px-1 py-0.5 rounded font-medium;
+}
+
+.prose pre {
+  @apply bg-slate-900 rounded-lg shadow-lg;
+}
