@@ -102,3 +102,49 @@ The frontend is the user interface of the blog.
   `server` 文件夹中的 `uploads` 目录用于存储上传的文件（如果已配置）。
 - Ensure port `3001` is free for the backend.
   确保后端端口 `3001` 未被占用。
+
+**npx prisma migrate dev --name init如果报错,先检查.env文件是否存在,不存在则按以下步骤创建并设置路径**
+
+### 一、创建 `.env` 文件
+
+在你的项目目录下，也就是：
+
+```
+D:\MyProject\Web\my-blog\server
+```
+
+新建一个文件，**文件名必须是 `.env`**（不要带 `.txt` 后缀）。
+
+------
+
+### 二、写入数据库地址
+
+因为你用的是 SQLite，内容写：
+
+```
+DATABASE_URL="file:./dev.db"
+```
+
+解释一下：
+
+- `DATABASE_URL` → Prisma 会读取这个变量作为数据库路径
+- `file:./dev.db` → 数据库文件名为 `dev.db`，会在 `server` 目录生成
+
+> 注意：不要用 Windows 的路径反斜杠 `\`，必须用 `./` 或 `/`
+
+------
+
+### 三、重新执行 Prisma 命令
+
+保存 `.env` 文件后，回到命令行：
+
+```
+npx prisma migrate dev --name init
+```
+
+✅ 这次 Prisma 会：
+
+1. 读取 `.env` 里的 `DATABASE_URL`
+2. 创建 `dev.db`
+3. 应用初始迁移
+4. 生成 `prisma/migrations` 目录和 `Prisma Client`
